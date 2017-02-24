@@ -1,0 +1,53 @@
+{
+	"tracks_folder" : "tracks",
+	"samples" : {
+		"enabled" : true,
+		"device" : "hw:1,0",
+		"gain" : 100
+	},
+	"click" : {
+		"enabled" : true,
+		"device" : "hw:0,0",
+		"gain" : 100
+	},
+	"gamepad" : {
+		"enabled" : true,
+		"device_id" : 0,
+		"navigation_axis_id" : 0,
+		"reverse_navigation_axis" : false,
+		"play_button_id" : 3,
+		"stop_button_id" : 0,
+		"show_playing_progress_button_id" : 1,
+		"save_current_playback_state_buton_id" : 8,
+		"restore_playback_state_buton_id" : 9
+	},
+	"midi_input" : {
+		"enabled" : false,
+		"port_name" : "CH345 20:0",
+		"nav_left" : {
+			"status" : "C0",
+			"data1" : "0A",
+			"data2" : null
+		},
+		"nav_right" : {
+			"status" : "C0",
+			"data1" : "0B",
+			"data2" : null
+		},
+		"play" : {
+			"status" : "C0",
+			"data1" : "0C",
+			"data2" : null
+		},
+		"stop" : {
+			"status" : "C0",
+			"data1" : "0D",
+			"data2" : null
+		}
+	},
+	"midi_output" : {
+		"enabled" : false,
+		"port_name" : "CH345 20:0"
+	},
+	"skip_timers" : false
+}

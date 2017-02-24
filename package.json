@@ -1,0 +1,11 @@
+{
+  "name": "lts2",
+  "version": "2.0.1",
+  "description": "Live Track Station",
+  "main": "lts2.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ryan GILLES",
+  "license": "ISC"
+}
