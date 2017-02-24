@@ -1,4 +1,10 @@
 {
+	"debug" : true,
+	"debug_udp" : false,
+	"show_playing_progress_interval" : 200,
+	"rendering" : {
+		"infos_style" : 1
+	},
 	"tracks_folder" : "tracks",
 	"samples" : {
 		"enabled" : true,

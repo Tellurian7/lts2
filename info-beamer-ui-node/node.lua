@@ -2,10 +2,10 @@ gl.setup(1600, 960)
 
 local debug_mode = false
 
-local easing = require "easing"
 local res = util.auto_loader()
 
 local infos = {
+	style = 1;
 	tracks = {
 		count = "00";
 	};
@@ -46,7 +46,7 @@ local function hslider(conf)
 	
 	local function set(new_value)
 		value = new_value
-		
+				
 		cached_progress_x2 = x + (value / 100) * max_w
 		cached_progress_y2 = y + h
 		cached_btn_x = x + (value / 100) * btn_x_range + btn_offset_x
@@ -64,6 +64,7 @@ local function hslider(conf)
 			set(value)
 			cached = true
 		end
+		
 		res.slider_bg:draw(x + bg_offset_x, y + bg_offset_y, x + bg_offset_x + bg_w, y + bg_offset_y + bg_h)
 		res.slider_progress:draw(x, y, cached_progress_x2, cached_progress_y2, alpha);
 		res.slider_btn:draw(cached_btn_x, cached_btn_y, cached_btn_x2, cached_btn_y2, btn_alpha);
@@ -202,7 +203,7 @@ local sliders = {
 		btn_w = 46,
 		btn_h = 47,
 		btn_alpha = 1,
-		value = 0
+		value = 0		
 	};
 }
 
@@ -253,6 +254,10 @@ local knobs = {
 }
 
 util.data_mapper{
+	["infos/style/set"] = function(value)
+		infos.style = tonumber(value)
+    end;
+
 	["infos/playing_track/title/set"] = function(value)
         infos.playing_track.title = value
     end;
@@ -309,6 +314,13 @@ local function drawInfos()
 		y = 185;
 		w = 1451;
 		h = 151;
+	};
+	
+	local infos_bg2 = {
+		x = 73;
+		y = 205;
+		w = 1451;
+		h = 120;
 	};
 	
 	local infos_playing_title = {
@@ -372,25 +384,47 @@ local function drawInfos()
 		value = infos.playing_track.total_time;
 	};
 	
-	-- background
-	res.infos_bg:draw(infos_bg.x, infos_bg.y, infos_bg.x + infos_bg.w, infos_bg.y + infos_bg.h, 1)
-	
-	-- playing title
-	res.roboto:write(infos_playing_title.x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
-	
-	-- track num
-	res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
-	
-	-- track count
-	local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
-	res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
-	
-	-- track current time
-	res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
-	
-	-- track total time
-	local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
-	res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
+	if (infos.style == 1) then
+		-- background
+		res.infos_bg:draw(infos_bg.x, infos_bg.y, infos_bg.x + infos_bg.w, infos_bg.y + infos_bg.h, 1)
+		
+		-- playing title
+		res.roboto:write(infos_playing_title.x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
+		
+		-- track num
+		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
+		
+		-- track count
+		local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
+		res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
+		
+		-- track current time
+		res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
+		
+		-- track total time
+		local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
+		res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
+	elseif (infos.style == 2) then
+		-- background
+		res.infos_bg2:draw(infos_bg2.x, infos_bg2.y, infos_bg2.x + infos_bg2.w, infos_bg2.y + infos_bg2.h, 1)
+		
+		-- playing title
+		res.roboto:write(infos_playing_title.x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
+		
+		-- track num
+		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
+		
+		-- track count
+		local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
+		res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
+		
+		-- track current time
+		res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
+		
+		-- track total time
+		local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
+		res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
+	end
 end
 
 function node.render()

@@ -13,12 +13,16 @@ const spawn = require('child_process').spawn;
  */
 const STDOUT_FILTER_REGEX_UPTIME_LINES = [
 	/^\W*uptime (\d+s), cpu (\ds\+\ds+), rss (\d+kb), (\d+) objs, (\d+'C)/,
-	/\W*mem\W+fps\W+width\W+height\W+cpu\W+flags\W+name\W+\(alias\)\n-+\n\W+(\d+kb)\W+([\d.]+)\W+(\d+)\W+(\d+)\W+([\d.]+%)\W+([\w-]+)/
+	/[\W*mem\W+fps\W+width\W+height\W+cpu\W+flags\W+name\W+\(alias\)\n-+\n]?\W+(\d+kb)\W+([\d.]+)\W+(\d+)\W+(\d+)\W+([\d.]+%)\W+([\w-]+)/,
+	/^-+\W+/,
+	/^\W*mem\W+fps\W+width\W+height\W+cpu\W+flags\W+name\W+\(alias\)\W+[-+]?[\W+]?/
 ];
 
 const STDOUT_FILTER_REGEX_UPTIME_LINES_MONITORING_VARS = [
 	['uptime', 'cpu2', 'rss', 'objs', 'temperature'],
-	['mem', 'fps', 'widht', 'height', 'cpu', 'flags']
+	['mem', 'fps', 'width', 'height', 'cpu', 'flags'],
+	[],
+	[]
 ];
  
 var lib = {};
@@ -71,14 +75,23 @@ lib.node.prototype._analyze_stdout = function (data)
 	if (data === '')
 		return;
 	
-	if (data.toString().indexOf('initialization completed') == 18)
+	if (data.toString().trim() == '')
+		return;
+	
+	if (data.toString().indexOf('initialization completed') > 0)
 	{
-		this.initialized = true;
-		if (typeof(this.initilizationCallback) == "function")		
-			this.initilizationCallback.call(this);
+		if (!this.initialized)
+		{		
+			if (typeof(this.initilizationCallback) == "function")		
+				this.initilizationCallback.call(this);
+			
+			this.initialized = true;
+		}
 	}
-	else if (data.toString().indexOf('uptime') == 0)
+	else
 	{
+		var reg_ex_found = false;
+		
 		for (line in STDOUT_FILTER_REGEX_UPTIME_LINES)
 		{
 			var uptime_first_line_values = data.toString().match(STDOUT_FILTER_REGEX_UPTIME_LINES[line]);
@@ -93,6 +106,7 @@ lib.node.prototype._analyze_stdout = function (data)
 						this.monitoring[monitoring_var] = uptime_first_line_values[i];
 						i++;
 					}
+					reg_ex_found = true;
 				}
 				catch (e)
 				{
@@ -104,14 +118,13 @@ lib.node.prototype._analyze_stdout = function (data)
 			}
 		}
 		
+		if (!reg_ex_found)
+		{
+			console.error('Unknow data from stdout / stderr :', data.toString());
+		}
+		
 		if (typeof(this.updateCallback) == "function")		
 			this.updateCallback.call(this, this.monitoring);
-	}
-	else
-	{
-		// Ignore...
-		//console.log('index = ' + data.toString().indexOf('initialization completed'));
-		console.log(data.toString());
 	}
 };
 

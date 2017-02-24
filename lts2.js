@@ -125,9 +125,7 @@ var samples_jump_to_frame = -1;
 function loadConfiguration()
 {
 	var configuration_file_path = __dirname + '/configuration.json';
-	
-	console.log('Loading configuration file...');
-	
+		
 	// Access and file exist check
 	
 	try 
@@ -202,7 +200,9 @@ function renderingError(lines, screen_uwait)
  */
 function renderingIntro()
 {
-	console.log('Running introduction...')
+	if (config.debug)
+		console.log('Running introduction...')
+	
 	renderingPrintLineCentered('LiveTrackStation', 1);
 	
 	// @todo render
@@ -309,18 +309,25 @@ function playTrack(index)
 
 	var track = tracks[index];	
 	
-	console.log('Play track');
-	console.log(track);
-
+	if (config.debug)
+	{
+		console.log('Play track');
+		console.log(track);
+	}
+	
 	var samples_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.samples_file;
 	var click_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.click_file;
 	
-	console.log('Samples file : "' + samples_file_path + '"');
-	console.log('Click file : "' + click_file_path + '"');
+	if (config.debug) 
+	{
+		console.log('Samples file : "' + samples_file_path + '"');
+		console.log('Click file : "' + click_file_path + '"');
+	}
 	
 	if (!config.samples.enabled)
 	{
-		console.log('Samples playing disabled');		
+		if (config.debug)
+			console.log('Samples playing disabled');		
 	}
 	else
 	{
@@ -340,15 +347,16 @@ function playTrack(index)
 			samples_playback_frame_infos = {
 				current_frame : parseInt(infos[0]),
 				frames_remaining : parseInt(infos[1]),
-				current_time : parseInt(infos[2]),
-				time_remaining : parseInt(infos[3])
+				current_time : parseFloat(infos[2]),
+				time_remaining : parseFloat(infos[3])
 			};
 		});
 	}
 	
 	if (!config.click.enabled)
 	{
-		console.log('Click playing disabled');		
+		if (config.debug)
+			console.log('Click playing disabled');		
 	}
 	else
 	{
@@ -371,7 +379,8 @@ function playTrack(index)
 			
 		if (samples_jump_to_frame != -1)
 		{
-			console.log('Jumping to frame ' + samples_jump_to_frame);
+			if (config.debug)
+				console.log('Jumping to frame ' + samples_jump_to_frame);
 			
 			track_samples_player.jump(samples_jump_to_frame);
 			samples_jump_to_frame = -1;
@@ -399,12 +408,15 @@ function playTrack(index)
 	
 	if (!config.midi_output.enabled)
 	{
-		console.log('MIDI output disabled');
+		if (config.debug)
+			console.log('MIDI output disabled');
+		
 		return;
 	}
 	else
 	{
-		console.log('MIDI output play...');
+		if (config.debug)
+			console.log('MIDI output play...');
 	}
 	
 	if (midi_output)
@@ -451,7 +463,9 @@ function playTrack(index)
 			l += _ljust(((event.raw.hex.status === null) ? '' : event.raw.hex.status), 2) + ' ';
 			l += _ljust(((event.raw.hex.data1 === null) ? '' : event.raw.hex.data1), 2) + ' ';
 			l += _ljust(((event.raw.hex.data2 === null) ? '' : event.raw.hex.data2), 2);
-			console.log(l); 
+			
+			if (config.debug)
+				console.log(l); 
 			
 			if ((event.raw.data2 === null) && (event.raw.data1 === null))
 				midi_output.sendMessage([event.raw.status]);
@@ -463,14 +477,19 @@ function playTrack(index)
 	});
 		
 	var ports_count = midi_output.getPortCount();
-	console.log(ports_count + ' MIDI ouptut ports found :');
+	
+	if (config.debug)
+		console.log(ports_count + ' MIDI ouptut ports found :');
 	
 	var port_number = -1;
 	
 	for (var i = 0 ; i < ports_count ; i++)
 	{
 		var port_name = midi_output.getPortName(i);
-		console.log(' ' + i + ' : ' + port_name);
+		
+		if (config.debug)
+			console.log(' ' + i + ' : ' + port_name);
+		
 		if (config.midi_output.port_name == port_name)
 			port_number = i;
 	}
@@ -478,19 +497,22 @@ function playTrack(index)
 	if (port_number == -1)
 	{
 		console.error('MIDI ouput port name not found !');
+		
 		renderingError(['Error :', 'No such MIDI out']);
 		process.exit(1);
 	}
 	else
 	{
-		console.log('MIDI ouput found');
+		if (config.debug)
+			console.log('MIDI ouput found');
 	}
 	
 	midi_output.openPort(port_number);
 	
 	midi_ouptut_player.loadFile(__dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.midi_file);
 	
-	console.log('MIDI file format = ' + midi_ouptut_player.getFormat());
+	if (config.debug)
+		console.log('MIDI file format = ' + midi_ouptut_player.getFormat());
 	
 	midi_ouptut_player.play();
 	
@@ -518,7 +540,8 @@ function playTrack(index)
  */
 function stopPlayingTrack()
 {
-	console.log('Stop playing track');
+	if (config.debug)
+		console.log('Stop playing track');
 	
 	if (track_samples_player)
 	{
@@ -543,7 +566,10 @@ function stopPlayingTrack()
 	if (midi_output_player !== null)
 	{
 		midi_output_player.stop();
-		console.log('Stop MIDI output player');
+		
+		if (config.debug)
+			console.log('Stop MIDI output player');
+		
 		midi_output_player = null;
 	}
 }
@@ -555,7 +581,9 @@ function scanTracksDir()
 {		
 	// Scan directories
 
-	console.log('Scanning tracks directories...');
+	if (config.debug)
+		console.log('Scanning tracks directories...');
+	
 	renderingPrintLineCentered('Scan tracks dir', 1);
 	renderingProgressBar(0);
 	
@@ -567,7 +595,9 @@ function scanTracksDir()
 	var tracks_dirs = [];
 	
 	renderingPrintLineCentered(' 0 dir(s) found', 1);
-	console.log(' 0 dir(s) found');
+	
+	if (config.debug)
+		console.log(' 0 dir(s) found');
 	
 	var progress = 0;
 	for (var i in path_files)
@@ -578,7 +608,9 @@ function scanTracksDir()
 		{
 			tracks_dirs.push(path_files[i]);
 			renderingPrintLineCentered(_rjust(tracks_dirs.length.toString(), 2) + ' dir(s) found', 1);
-			console.log(_rjust(tracks_dirs.length.toString(), 2) + ' dir(s) found');
+			
+			if (config.debug)
+				console.log(_rjust(tracks_dirs.length.toString(), 2) + ' dir(s) found');
 		}
 		
 		progress++;
@@ -593,7 +625,9 @@ function scanTracksDir()
 	
 	// Check tracks configuration files
 	
-	console.log('Checking tracks configuration files...');
+	if (config.debug)
+		console.log('Checking tracks configuration files...');
+	
 	renderingPrintLineCentered('Check tracks cfg', 1);
 	renderingProgressBar(0);
 	
@@ -740,6 +774,7 @@ function _rjust(s, width, padding)
  */
 function _secondsToMMSS(seconds)
 {
+	seconds = Math.round(seconds);
 	var hours = Math.floor(seconds / 3600);
     var minutes = Math.floor((seconds - (hours * 3600)) / 60);
     var seconds = seconds - (hours * 3600) - (minutes * 60);
@@ -770,7 +805,7 @@ function renderingShowPlayingInfos()
 	if (samples_playback_frame_infos.time_remaining == 0)
 		return;
 	
-	var total_time = Math.ceil(samples_playback_frame_infos.current_time) + Math.round(samples_playback_frame_infos.time_remaining);
+	var total_time = Math.round(samples_playback_frame_infos.current_time + samples_playback_frame_infos.time_remaining);
 	var total_frames = samples_playback_frame_infos.current_frame + samples_playback_frame_infos.frames_remaining;
 	
 	var track = tracks[current_playing_track_index];
@@ -803,12 +838,14 @@ function renderingShowPlayingInfos()
  */
 function renderingSetPlayingTrack(index)
 {
-	console.log('Rendering : Setting playing track to index ' + index + '...');
+	if (config.debug)
+		console.log('Rendering : Setting playing track to index ' + index + '...');
 	
 	if (index !== -1)
 		var track = tracks[index];
 	
-	console.log(track);	
+	if (config.debug)
+		console.log(track);	
 		
 	show_playing_progress = true;
 					
@@ -818,7 +855,7 @@ function renderingSetPlayingTrack(index)
 	};
 	
 	showPlayingProgressIntervalFunction();
-	show_playing_progress_handler = setInterval(showPlayingProgressIntervalFunction, 1000);
+	show_playing_progress_handler = setInterval(showPlayingProgressIntervalFunction, config.show_playing_progress_interval);
 }
 
 /**
@@ -827,11 +864,13 @@ function renderingSetPlayingTrack(index)
  */
 function renderingSetNavigationTrack(index)
 {
-	console.log('Rendering : Setting navigation track to index ' + index + '...');
+	if (config.debug)
+		console.log('Rendering : Setting navigation track to index ' + index + '...');
 	
 	var track = tracks[index];
 	
-	console.log(track);	
+	if (config.debug)
+		console.log(track);	
 	
 	lts_status.player.infos.tracks.count = _rjust(tracks.length.toString(), 2, '0');
 	lts_status.player.infos.playing_track.title = track.title;
@@ -841,6 +880,8 @@ function renderingSetNavigationTrack(index)
 	sendUdpMessage('infos/tracks/count/set:' + lts_status.player.infos.tracks.count);
 	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);
 	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);
+	sendUdpMessage('infos/playing_track/current_time/set:00:00');
+	sendUdpMessage('infos/playing_track/total_time/set:00:00');
 }
 
 /**
@@ -848,7 +889,8 @@ function renderingSetNavigationTrack(index)
  */
 function trackNavigationInit()
 {
-	console.log('Initializing tracks navigation...');	
+	if (config.debug)
+		console.log('Initializing tracks navigation...');	
 	//lcd.clear();
 	
 	// Define 1st track as current
@@ -943,23 +985,30 @@ function processMIDInit()
 {
 	if (!config.midi_input.enabled)
 	{
-		console.log('MIDI input disabled');
+		if (config.debug)
+			console.log('MIDI input disabled');
 		return;
 	}
 	
-	console.log('Initializing process MIDI interactions...');
+	if (config.debug)
+		console.log('Initializing process MIDI interactions...');
 	
 	midi_input = new midi.input();
 	
 	var ports_count = midi_input.getPortCount();
-	console.log(ports_count + ' MIDI input ports found :');
+	
+	if (config.debug)
+		console.log(ports_count + ' MIDI input ports found :');
 	
 	var port_number = -1;
 	
 	for (var i = 0 ; i < ports_count ; i++)
 	{
 		var port_name = midi_input.getPortName(i);
-		console.log(' ' + i + ' : ' + port_name);
+		
+		if (config.debug)
+			console.log(' ' + i + ' : ' + port_name);
+		
 		if (config.midi_input.port_name == port_name)
 			port_number = i;
 	}
@@ -972,7 +1021,8 @@ function processMIDInit()
 	}
 	else
 	{
-		console.log('MIDI input found');
+		if (config.debug)
+			console.log('MIDI input found');
 	}
 	
 	midi_input.on('message', function(deltaTime, message) {
@@ -990,13 +1040,16 @@ function processMIDInit()
 
 		if (m[2])
 			data2 = _toHex(m[2], 2);
-		
-		console.log('MIDI input : status=' + status + ', data1=' + data1 + ', data2=' + data2 + ', delta=' + deltaTime);
+
+		if (config.debug)
+			console.log('MIDI input : status=' + status + ', data1=' + data1 + ', data2=' + data2 + ', delta=' + deltaTime);
 		
 		// Ignore under 0,1 second delta (bug filtering...)
 		if (deltaTime < 0.1)
 		{
-			console.log('Delta is to low, ignore !');
+			if (config.debug)
+				console.log('Delta is to low, ignore !');
+			
 			return;
 		}
 		
@@ -1042,7 +1095,9 @@ function processMIDInit()
  */
 function checkUsb()
 {
-	console.log('Scanning USB devices...');
+	if (config.debug)
+		console.log('Scanning USB devices...');
+	
 	renderingPrintLineCentered('Scan USB devices', 1);
 	renderingProgressBar(0);
 	
@@ -1052,7 +1107,8 @@ function checkUsb()
 	{
 		var device = devices[i];
 		
-		console.log(device);
+		if (config.debug)
+			console.log(device);
 	}	
 }
 
@@ -1166,8 +1222,11 @@ function loadAndRestorePlaybackState()
 	
 	var track = tracks[track_id];
 	
-	console.log('Save stat track found :');
-	console.log(track);
+	if (config.debug)
+	{
+		console.log('Save stat track found :');
+		console.log(track);
+	}
 	
 	// Set current playing track
 	
@@ -1175,11 +1234,13 @@ function loadAndRestorePlaybackState()
 	
 	current_playing_track_index = track_id;
 
-	console.log('Set save stat playing track (Folder : "' + stat.track_folder + '"');
+	if (config.debug)
+		console.log('Set save stat playing track (Folder : "' + stat.track_folder + '"');
 	
 	// Jump to save stat frame
 	
-	console.log('Set frame jump when playback is rerady (Frame : ' + stat.samples_file_frame + ')');
+	if (config.debug)
+		console.log('Set frame jump when playback is rerady (Frame : ' + stat.samples_file_frame + ')');
 	
 	samples_jump_to_frame = stat.samples_file_frame;
 	
@@ -1196,12 +1257,15 @@ function processGamepadInit()
 {
 	if (!config.gamepad.enabled)
 	{
-		console.log('Gamepad disabled');
+		if (config.debug)
+			console.log('Gamepad disabled');
+		
 		return;
 	}
 	else
 	{
-		console.log('Initialize gamepad...');
+		if (config.debug)
+			console.log('Initialize gamepad...');
 	}
 
 	gamepad.init();
@@ -1218,11 +1282,14 @@ function processGamepadInit()
 	
 	// Listen for move events on all gamepads
 	gamepad.on('move', function (id, axis, value){
-		console.log('Gamepad move', {
-			id: id,
-			axis: axis,
-			value: value,
-		});
+		if (config.debug)
+		{
+			console.log('Gamepad move', {
+				id: id,
+				axis: axis,
+				value: value,
+			});
+		}
 		
 		if ((id == config.gamepad.device_id) && (axis == config.gamepad.navigation_axis_id))
 		{
@@ -1244,10 +1311,13 @@ function processGamepadInit()
 	// Listen for button down events on all gamepads
 	
 	gamepad.on('down', function (id, num) {
-		console.log('Gamepad button down', {
-			id: id,
-			num: num,
-		});
+		if (config.debug)
+		{
+			console.log('Gamepad button down', {
+				id: id,
+				num: num,
+			});
+		}
 		
 		if (id == config.gamepad.device_id)
 		{
@@ -1275,10 +1345,13 @@ function processGamepadInit()
 	// Listen for button up events on all gamepads
 	
 	gamepad.on('up', function (id, num) {
-		console.log('Gamepad button up', {
-			id: id,
-			num: num,
-		});
+		if (config.debug)
+		{
+			console.log('Gamepad button up', {
+				id: id,
+				num: num,
+			});
+		}
 		
 		if (id == config.gamepad.device_id)
 		{
@@ -1310,29 +1383,31 @@ var lts_status = {
 		'progress_percent' : 0,
 		'infos' : {
 			'tracks' : {
-				'count' : "12"
+				'count' : "00"
 			},
 			'playing_track' : {
-				'title' : "QTest 37",
-				'num' : "07",
-				'current_time' : "02:37",
-				'total_time' : "01:37"
+				'title' : "",
+				'num' : "00",
+				'current_time' : "00:00",
+				'total_time' : "00:00"
 			}
 		}
 	},
 	'ear_monitoring' : {
-		'level_percent' : 80
+		'level_percent' : 0
 	},
 	'samples_mix' : {
-		'level_percent' : 80
+		'level_percent' : 0
 	}
 }
 
 infobeamer_node.initilizationCallback = function() {
-	console.log('Info-Beamer initialized');
+	if (config.debug)
+		console.log('Info-Beamer initialized');
 	
 	// Set default values
-	
+		
+	sendUdpMessage('infos/style/set:' + config.rendering.infos_style);
 	sendUdpMessage('infos/tracks/count/set:' + lts_status.player.infos.tracks.count);
 	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);
 	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);
@@ -1341,12 +1416,16 @@ infobeamer_node.initilizationCallback = function() {
 	
 	sendUdpMessage('sliders/track/set:' + lts_status.player.progress_percent);
 	
+	lts_status.ear_monitoring.level_percent = config.click.gain;
+	lts_status.samples_mix.level_percent = config.samples.gain;
+	
 	sendUdpMessage('knobs/ear_monitoring/set:' + lts_status.ear_monitoring.level_percent);
 	sendUdpMessage('knobs/samples_mix/set:' + lts_status.samples_mix.level_percent);
 };
 
 infobeamer_node.updateCallback = function(monitoring) {
-	console.log('Info-Beamer is running since ' + this.monitoring.uptime + ' at ' + this.monitoring.fps + ' FPS, CPU Usage : ' + this.monitoring.cpu + ', Temperature : ' + this.monitoring.temperature);
+	if (config.debug)
+		console.log('Info-Beamer is running since ' + this.monitoring.uptime + ' at ' + this.monitoring.fps + ' FPS, CPU Usage : ' + this.monitoring.cpu + ', Memory Usage : ' + this.monitoring.mem + ', Temperature : ' + this.monitoring.temperature);
 };
 
 infobeamer_node.errorCallback = function(err) {
@@ -1355,8 +1434,11 @@ infobeamer_node.errorCallback = function(err) {
 
 function sendUdpMessage(message)
 {
+	if (config.debug && config.debug_udp)
+		console.log('send UDP message : ' + 'info-beamer-ui-node/' + message);
+	
 	udp_client.send('info-beamer-ui-node/' + message, 4444, 'localhost', function(err) {
-		// console.log(err)
+		//console.log(err)
 	});
 }
 
@@ -1365,7 +1447,8 @@ function sendUdpMessage(message)
  */
 function processKeyboardInit()
 {
-	console.log('Initializing process keyboard interactions...');
+	if (config.debug)
+		console.log('Initializing process keyboard interactions...');
 	
 	readline.emitKeypressEvents(process.stdin);
 	process.stdin.setRawMode(true);
@@ -1373,11 +1456,14 @@ function processKeyboardInit()
 	process.stdin.on('keypress', (str, key) => {
 		if( key == undefined )
 		{
-			console.log('{'+char+'}')
+			if (config.debug)
+				console.log('{'+char+'}')
 		}
 		else
 		{
-			console.log('['+key.name+']');
+			if (config.debug)
+				console.log('['+key.name+']');
+			
 			switch (key.name)
 			{
 				case 'left' :
