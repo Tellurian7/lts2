@@ -8,6 +8,7 @@
  * Requierments
  */
 var infobeamer = require('./infobeamer.js');
+var touchscreen = require('./touchscreen.js');
 
 var fs = require('fs');
 var sleep = require('sleep');
@@ -18,7 +19,7 @@ var gamepad = require("gamepad");
 var midi = require('midi');
 var MidiPlayer = require('midi-player-js');
 const dgram = require('dgram');
-
+var SerialPort = require('serialport');
 /**
  * Program version
  * @const {String}
@@ -118,6 +119,16 @@ var show_playing_progress_handler;
  */
 var samples_jump_to_frame = -1;
 
+/**
+ * Touch Screen inputs handler
+ * @var {touchscreen_input}
+ */
+var touchscreen_input;
+
+/**
+ * Arduino serial port handler
+ */
+var arduino_port;
 
 /**
  * Load configuration file ./configuration.json
@@ -160,7 +171,6 @@ function loadConfiguration()
 		process.exit(1);
 	}
 }
-
 
 /**
  * Print error lines
@@ -387,13 +397,16 @@ function playTrack(index)
 		}
 		
 		track_samples_player.pause();
+		
+		track_samples_player.gain(config.samples.gain);
 	}
 	
-	if (config.click.enabled)
 	if (config.click.enabled)
 	{
 		track_click_player.play(click_file_path);	
 		track_click_player.pause();
+		
+		track_click_player.gain(config.click.gain);
 	}
 	
 	// Re-sync
@@ -542,6 +555,11 @@ function stopPlayingTrack()
 {
 	if (config.debug)
 		console.log('Stop playing track');
+	
+	lts_status.player.infos.playing_track.current_time = '00:00';
+	lts_status.player.infos.playing_track.total_time = '00:00';
+	sendUdpMessage('infos/playing_track/current_time/set:' + lts_status.player.infos.playing_track.current_time);
+	sendUdpMessage('infos/playing_track/total_time/set:' + lts_status.player.infos.playing_track.total_time);
 	
 	if (track_samples_player)
 	{
@@ -701,6 +719,70 @@ function scanTracksDir()
 		// Add track folder info
 		track.folder = tracks_dirs[i];
 		
+		// Check track files
+		
+		if (config.samples.enabled)
+		{
+			var samples_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.samples_file;
+			
+			// Access and file exist check
+		
+			try 
+			{
+				fs.accessSync(samples_file_path, fs.constants.R_OK);
+			}
+			catch (e)
+			{
+				console.error('Can\'t access to file ' + samples_file_path + ' or file doesn\'t exist');
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t access to samples file ', track.samples_file]);
+				process.exit(1);
+			}
+			
+			// track.json file read
+			
+			try
+			{
+				var tmp = fs.readFileSync(samples_file_path);
+			}
+			catch (e)
+			{
+				console.error('Can\'t read file ' + samples_file_path);
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t read samples file', track.samples_file]);
+				process.exit(1);
+			}
+		}
+		
+		if (config.click.enabled)
+		{
+			var click_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.click_file;
+			
+			// Access and file exist check
+		
+			try 
+			{
+				fs.accessSync(click_file_path, fs.constants.R_OK);
+			}
+			catch (e)
+			{
+				console.error('Can\'t access to file ' + click_file_path + ' or file doesn\'t exist');
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t access to click file ', track.click_file]);
+				process.exit(1);
+			}
+			
+			// track.json file read
+			
+			try
+			{
+				var tmp = fs.readFileSync(click_file_path);
+			}
+			catch (e)
+			{
+				console.error('Can\'t read file ' + click_file_path);
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t read click file', track.click_file]);
+				process.exit(1);
+			}
+		}
+		
 		tracks.push(track);
 		
 		// @todo check if track files exists
@@ -843,10 +925,20 @@ function renderingSetPlayingTrack(index)
 	
 	if (index !== -1)
 		var track = tracks[index];
+	else
+		return;
 	
 	if (config.debug)
 		console.log(track);	
-		
+	
+	lts_status.player.infos.playing_track.num = index + 1;
+	lts_status.player.infos.playing_track.num = _rjust(lts_status.player.infos.playing_track.num.toString(), 2, '0');
+	lts_status.player.infos.playing_track.title = track.title;
+	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);		
+	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);	
+	
+	sendUdpMessage('buttons/play_stop/value/set:' + 'stop');
+	
 	show_playing_progress = true;
 					
 	showPlayingProgressIntervalFunction = function () {
@@ -873,15 +965,12 @@ function renderingSetNavigationTrack(index)
 		console.log(track);	
 	
 	lts_status.player.infos.tracks.count = _rjust(tracks.length.toString(), 2, '0');
-	lts_status.player.infos.playing_track.title = track.title;
-	lts_status.player.infos.playing_track.num = index + 1;
-	lts_status.player.infos.playing_track.num = _rjust(lts_status.player.infos.playing_track.num.toString(), 2, '0');
+	lts_status.player.infos.navigation_track.title = track.title;
+	lts_status.player.infos.navigation_track.num = index + 1;
+	lts_status.player.infos.navigation_track.num = _rjust(lts_status.player.infos.navigation_track.num.toString(), 2, '0');
 
-	sendUdpMessage('infos/tracks/count/set:' + lts_status.player.infos.tracks.count);
-	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);
-	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);
-	sendUdpMessage('infos/playing_track/current_time/set:00:00');
-	sendUdpMessage('infos/playing_track/total_time/set:00:00');
+	sendUdpMessage('infos/navigation_track/num/set:' + lts_status.player.infos.navigation_track.num);
+	sendUdpMessage('infos/navigation_track/title/set:' + lts_status.player.infos.navigation_track.title);	
 }
 
 /**
@@ -973,6 +1062,13 @@ function trackPlayingStop(force)
 		return;
 	
 	current_playing_track_index = -1;
+	
+	lts_status.player.infos.playing_track.title = '';
+	lts_status.player.infos.playing_track.num = '00';
+	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);	
+	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);	
+	
+	sendUdpMessage('buttons/play_stop/value/set:' + 'play');
 	
 	stopPlayingTrack();
 	renderingSetPlayingTrack(current_playing_track_index);
@@ -1251,6 +1347,236 @@ function loadAndRestorePlaybackState()
 }
 
 /**
+ * Initialize Arduino inputs support if enabled
+ */
+function processArduinoInit() 
+{
+	if (!config.arduino.enabled)
+	{
+		if (config.debug)
+			console.log('Arduino serial port disabled');
+		
+		return;
+	}
+	else
+	{
+		if (config.debug)
+			console.log('Initialize Arduino serial port...');
+	}
+	
+	arduino_port = new SerialPort(config.arduino.usb_port_path);
+	
+	arduino_port.on('open', function() {
+		if (config.debug)
+			console.log('Arduino serial port opened');
+	});
+
+	arduino_port.on('data', function(buf) {
+		var data = buf.toString("utf-8")
+		
+		if (config.debug)
+		{
+			console.log(data.trim());
+		}
+		
+		var lines = data.split("\r\n");
+		for (var i in lines)
+		{
+			var ar = lines[i].split('=');
+			switch (ar[0])
+			{
+				case 'A2' :
+					lts_status.ear_monitoring.level_percent = parseInt(ar[1]);
+					config.click.gain = lts_status.ear_monitoring.level_percent;
+					try
+					{
+						track_click_player.gain(config.click.gain);
+					} catch (e) {}	
+					sendUdpMessage('knobs/ear_monitoring/set:' + lts_status.ear_monitoring.level_percent);
+					break;
+					
+				case 'A1':
+					lts_status.samples_mix.level_percent = parseInt(ar[1]);
+					config.samples.gain = lts_status.samples_mix.level_percent;
+					try
+					{
+						track_samples_player.gain(config.samples.gain);
+					} catch (e) {}	
+					sendUdpMessage('knobs/samples_mix/set:' + lts_status.samples_mix.level_percent);
+					break;
+			}
+		}
+	});	
+	
+	arduino_port.on('error', function(err) {
+		console.log('Arduino serial port error : ', err.message);
+	});
+}
+
+/**
+ * Compute distance between two points in 2D
+ * @param {Number} x1
+ * @param {Number} y1
+ * @param {Number} x2
+ * @param {Number} y2
+ * @return {Number}
+ */
+function _distance2D(x1, y1, x2, y2)
+{
+	return (Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)));
+}
+
+/**
+ * Convert degrees to radians
+ * @param {Number} deg Degrees
+ * @return {Number}
+ */
+function _degToRad(deg)
+{
+	return deg * Math.PI / 180;
+}
+
+/**
+ * Convert radians to degrees
+ * @param {Number} rad Radians
+ * @return {Number}
+ */
+function _radToDeg(rad)
+{
+	return rad * 180 / Math.PI;
+}
+
+/**
+ * Return true if the point is in the square
+ *
+ */
+function _pointInSquare(point_x, point_y, square_x1, square_y1, square_x2, square_y2)
+{
+	if (point_x < square_x1 || point_x > square_x2)
+		return false;
+
+	if (point_y < square_y1 || point_y > square_y2)
+		return false;	
+	
+	return true;
+}
+
+/**
+ * Initialize Tousch Screen inputs handler
+ */
+function processTouchScreenInit()
+{
+	config.touchscreen.debug = config.debug;
+	touchscreen_input = new touchscreen.touchscreen_input(config.touchscreen);
+	
+	touchscreen_input.on('touch', function(position_x, position_y) {
+		/*if (config.debug)
+			console.log('Touched  : x = ' + position_x + ' , y = ' + position_y);*/
+		
+		handleTouchScreen(position_x, position_y, true);		
+	});
+
+	touchscreen_input.on('pressure', function(position_x, position_y) {
+		/*if (config.debug)
+			console.log('Pressure : x = ' + position_x + ' , y = ' + position_y);*/
+		
+		handleTouchScreen(position_x, position_y, false);
+	});
+	
+	touchscreen_input.on('error', function(err) {
+		console.log('Touch Screen error : ', err);
+	});
+	
+	touchscreen_input.run();
+}
+
+function handleTouchScreen(position_x, position_y, touch)
+{
+	// Buttons
+	
+	if (touch)
+	{	
+		// Buttons : Previous
+		
+		if (_pointInSquare(position_x, position_y, config.buttons.previous.x, config.buttons.previous.y, config.buttons.previous.x + config.buttons.previous.w, config.buttons.previous.y + config.buttons.previous.h))
+		{
+			trackNavigationPrevious();
+		}
+		
+		// Buttons : Play/Stop
+		
+		if (_pointInSquare(position_x, position_y, config.buttons.play_stop.x, config.buttons.play_stop.y, config.buttons.play_stop.x + config.buttons.play_stop.w, config.buttons.play_stop.y + config.buttons.play_stop.h))
+		{
+			if (current_playing_track_index > -1)
+			{
+				// Playing
+				trackPlayingStop(1);
+			}
+			else
+			{
+				// Stopped
+				trackNavigationSelect();
+			}
+		}
+		
+		// Buttons : Previous
+		
+		if (_pointInSquare(position_x, position_y, config.buttons.next.x, config.buttons.next.y, config.buttons.next.x + config.buttons.next.w, config.buttons.next.y + config.buttons.next.h))
+		{
+			trackNavigationNext();
+		}
+	}
+	
+	// Knobs : Ear Monitoring gain level
+	
+	var dist = _distance2D(position_x, position_y, config.knobs.ear_monitoring.center_x, config.knobs.ear_monitoring.center_y);
+	
+	if ((dist >= config.knobs.ear_monitoring.touchscreen_min_radius) && (dist <= config.knobs.ear_monitoring.touchscreen_max_radius))
+	{
+		deg_angle = (Math.atan2(-(position_y - config.knobs.ear_monitoring.center_y), -(position_x - config.knobs.ear_monitoring.center_x)) + Math.PI / 2) * (180 / Math.PI);
+		if (deg_angle < 0)
+			deg_angle = -(-90-deg_angle) + 270;
+		
+		if ((deg_angle > config.knobs.ear_monitoring.min_angle) && (deg_angle < config.knobs.ear_monitoring.max_angle))
+		{
+			percent = ((deg_angle - config.knobs.ear_monitoring.min_angle) / (config.knobs.ear_monitoring.max_angle - config.knobs.ear_monitoring.min_angle)) * 100;
+			
+			lts_status.ear_monitoring.level_percent = Math.round(percent);
+			config.click.gain = lts_status.ear_monitoring.level_percent;
+			try
+			{
+				track_click_player.gain(config.click.gain);
+			} catch (e) {}	
+			sendUdpMessage('knobs/ear_monitoring/set:' + lts_status.ear_monitoring.level_percent);
+		}
+	}
+	
+	// Knobs : Samples Mix gain level
+	
+	var dist = _distance2D(position_x, position_y, config.knobs.samples_mix.center_x, config.knobs.samples_mix.center_y);
+	
+	if ((dist >= config.knobs.samples_mix.touchscreen_min_radius) && (dist <= config.knobs.samples_mix.touchscreen_max_radius))
+	{
+		deg_angle = (Math.atan2(-(position_y - config.knobs.samples_mix.center_y), -(position_x - config.knobs.samples_mix.center_x)) + Math.PI / 2) * (180 / Math.PI);
+		if (deg_angle < 0)
+			deg_angle = -(-90-deg_angle) + 270;
+		
+		if ((deg_angle > config.knobs.samples_mix.min_angle) && (deg_angle < config.knobs.samples_mix.max_angle))
+		{
+			percent = ((deg_angle - config.knobs.samples_mix.min_angle) / (config.knobs.samples_mix.max_angle - config.knobs.samples_mix.min_angle)) * 100;
+			
+			lts_status.samples_mix.level_percent = Math.round(percent);
+			config.samples.gain = lts_status.samples_mix.level_percent;
+			try
+			{
+				track_samples_player.gain(config.samples.gain);
+			} catch (e) {}			
+			sendUdpMessage('knobs/samples_mix/set:' + lts_status.samples_mix.level_percent);
+		}
+	}
+}
+
+/**
  * Initialize Gamepad interactions
  */
 function processGamepadInit()
@@ -1385,6 +1711,10 @@ var lts_status = {
 			'tracks' : {
 				'count' : "00"
 			},
+			'navigation_track' : {
+				'title' : "",
+				'num' : "00",
+			},
 			'playing_track' : {
 				'title' : "",
 				'num' : "00",
@@ -1407,8 +1737,9 @@ infobeamer_node.initilizationCallback = function() {
 	
 	// Set default values
 		
-	sendUdpMessage('infos/style/set:' + config.rendering.infos_style);
 	sendUdpMessage('infos/tracks/count/set:' + lts_status.player.infos.tracks.count);
+	sendUdpMessage('infos/navigation_track/title/set:' + lts_status.player.infos.navigation_track.title);
+	sendUdpMessage('infos/navigation_track/num/set:' + lts_status.player.infos.navigation_track.num);
 	sendUdpMessage('infos/playing_track/title/set:' + lts_status.player.infos.playing_track.title);
 	sendUdpMessage('infos/playing_track/num/set:' + lts_status.player.infos.playing_track.num);
 	sendUdpMessage('infos/playing_track/current_time/set:' + lts_status.player.infos.playing_track.current_time);
@@ -1509,9 +1840,10 @@ function processKeyboardInit()
 					if (lts_status.ear_monitoring.level_percent < 0)
 						lts_status.ear_monitoring.level_percent = 0;
 					
-					config.click.gain = lts_status.ear_monitoring.level_percent;
+					config.click.gain = lts_status.ear_monitoring.level_percent;					
+					try {
 					track_click_player.gain(config.click.gain);
-					
+					} catch (e) {}
 					sendUdpMessage('knobs/ear_monitoring/set:' + lts_status.ear_monitoring.level_percent);
 					break;
 
@@ -1521,8 +1853,11 @@ function processKeyboardInit()
 						lts_status.ear_monitoring.level_percent = 100;
 					
 					config.click.gain = lts_status.ear_monitoring.level_percent;
-					track_click_player.gain(config.click.gain);
 					
+					try
+					{
+						track_click_player.gain(config.click.gain);
+					} catch (e) {}
 					sendUdpMessage('knobs/ear_monitoring/set:' + lts_status.ear_monitoring.level_percent);
 					break;
 					
@@ -1532,8 +1867,10 @@ function processKeyboardInit()
 						lts_status.samples_mix.level_percent = 0;
 					
 					config.click.gain = lts_status.samples_mix.level_percent;
-					track_click_player.gain(config.click.gain);
-					
+					try
+					{
+						track_click_player.gain(config.click.gain);
+					} catch (e) {}					
 					sendUdpMessage('knobs/samples_mix/set:' + lts_status.samples_mix.level_percent);
 					break;
 
@@ -1543,15 +1880,45 @@ function processKeyboardInit()
 						lts_status.samples_mix.level_percent = 100;
 					
 					config.click.gain = lts_status.samples_mix.level_percent;
-					track_click_player.gain(config.click.gain);
-					
+					try
+					{
+						track_click_player.gain(config.click.gain);
+					} catch (e) {}
 					sendUdpMessage('knobs/samples_mix/set:' + lts_status.samples_mix.level_percent);
 					break;
 					
 				case 'escape' :
 					stopPlayingTrack();
+					
+					if (config.debug)
+						console.log('Closing UDP client...');
+					
 					udp_client.close();
+					
+					if (config.debug)
+						console.log('Closing Info-Beamer...');
+					
 					infobeamer_node.close();
+					
+					if (config.debug)
+						console.log('Closing Touchscreen...');
+					
+					try {
+						touchscreen_input.close();
+					} catch (e) {}
+					
+					touchscreen_input = undefined;
+					
+					if (config.debug)
+						console.log('Closing Arduino...');
+					
+					try {
+						arduino_port.close();
+					} catch (e) {}
+					
+					if (config.debug)
+						console.log('Exiting process...');
+					
 					process.exit();
 					break;
 			}
@@ -1561,19 +1928,26 @@ function processKeyboardInit()
 	console.log('Press "escape" to exit process');
 }
 
-infobeamer_node.run();
-
 // Load configuration.json file
 loadConfiguration();
-
-// LCD init & intro
-renderingIntro();
 
 // Check if all USB devices are connected
 //checkUsb();
 
 // Scan tracks directories & read informations
 scanTracksDir();
+
+// Info-Beamer init
+infobeamer_node.run();
+
+// Arduino input handler
+processArduinoInit();
+
+// Touchscreen input handler
+processTouchScreenInit();
+
+// LCD init & intro
+//renderingIntro();
 
 // Init tracks navigation
 trackNavigationInit();

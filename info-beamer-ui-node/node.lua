@@ -5,15 +5,18 @@ local debug_mode = false
 local res = util.auto_loader()
 
 local infos = {
-	style = 1;
 	tracks = {
 		count = "00";
 	};
 	playing_track = {
-		title = "";	
+		title = "";
 		num = "00";
 		current_time = "00:00";
 		total_time = "00:00"
+	};
+	navigation_track = {
+		title = "";
+		num = "00";
 	};
 };
 
@@ -207,6 +210,70 @@ local sliders = {
 	};
 }
 
+local function button(conf)
+	local id = conf.id
+	local x = conf.x
+	local y = conf.y
+	local w = conf.w
+	local h = conf.h
+	local alpha = conf.alpha
+	local value = conf.value
+	
+	local function draw()
+		if (id == 'play_stop') then
+			if (value == 'play') then
+				res.button_play:draw(x, y , x + w, y + h, alpha)
+			elseif (value == 'stop') then
+				res.button_stop:draw(x, y , x + w, y + h, alpha)
+			end
+		elseif (id == 'previous') then
+			res.button_previous:draw(x, y , x + w, y + h, alpha)
+		elseif (id == 'next') then
+			res.button_next:draw(x, y , x + w, y + h, alpha)
+		end		
+	end
+	
+	local function set(new_value)
+		value = new_value
+	end
+	
+	return {
+		draw = draw;
+		set = set;
+	}
+end
+
+
+local buttons = {
+	play_stop_btn = button{
+		id = 'play_stop',
+		x = 700,
+		y = 476,
+		w = 200,
+		h = 240,
+		alpha = 1,
+		value = 'play'
+	},
+	previous_btn = button{
+		id = 'previous',
+		x = 538,
+		y = 544,
+		w = 162,
+		h = 112,
+		alpha = 1,
+		value = 'previous'
+	},
+	next_btn = button{
+		id = 'next',
+		x = 900,
+		y = 544,
+		w = 162,
+		h = 112,
+		alpha = 1,
+		value = 'next'
+	}
+};
+
 local knobs = {
 	ear_monitoring = knob{
 		center_x = 288,
@@ -254,10 +321,14 @@ local knobs = {
 }
 
 util.data_mapper{
-	["infos/style/set"] = function(value)
-		infos.style = tonumber(value)
+	["infos/navigation_track/title/set"] = function(value)
+        infos.navigation_track.title = value
     end;
-
+	
+	["infos/navigation_track/num/set"] = function(value)
+        infos.navigation_track.num = value
+    end;
+	
 	["infos/playing_track/title/set"] = function(value)
         infos.playing_track.title = value
     end;
@@ -280,6 +351,10 @@ util.data_mapper{
 
 	["sliders/track/set"] = function(value)
         sliders.track.set(tonumber(value))
+    end;
+	
+	["buttons/play_stop/value/set"] = function(value)
+        buttons.play_stop_btn.set(value)
     end;
 	
 	["knobs/ear_monitoring/set"] = function(value)
@@ -323,15 +398,41 @@ local function drawInfos()
 		h = 120;
 	};
 	
-	local infos_playing_title = {
+	local infos_navigation_title = {
 		x = 106;
-		y = 205;
-		font_size = 55;
+		y = 203;
+		font_size = 50;
 		font_color = {
 			-- 88888f rgb(136, 136, 143)
 			r = 0.53333333333333333333333333333333;
 			g = 0.53333333333333333333333333333333;
 			b = 0.56078431372549019607843137254902;
+		};
+		value = infos.navigation_track.title;
+	}
+	
+	local infos_playing_num = {
+		x = 106;
+		y = 258;
+		font_size = 65;
+		font_color = {
+			-- 618ac6 rgb(97, 138, 198)
+			r = 0.38039215686274509803921568627451;
+			g = 0.54117647058823529411764705882353;
+			b = 0.77647058823529411764705882352941;
+		};
+		value = infos.playing_track.num;
+	}
+	
+	local infos_playing_title = {
+		offset_x = 15;
+		y = 269;
+		font_size = 50;
+		font_color = {
+			-- 618ac6 rgb(97, 138, 198)
+			r = 0.38039215686274509803921568627451;
+			g = 0.54117647058823529411764705882353;
+			b = 0.77647058823529411764705882352941;
 		};
 		value = infos.playing_track.title;
 	}
@@ -341,12 +442,18 @@ local function drawInfos()
 		y = 194;
 		font_size = 65;
 		font_color = {
+			-- 88888f rgb(136, 136, 143)
+			r = 0.53333333333333333333333333333333;
+			g = 0.53333333333333333333333333333333;
+			b = 0.56078431372549019607843137254902;
+		};
+		sel_font_color = {
 			-- 618ac6 rgb(97, 138, 198)
 			r = 0.38039215686274509803921568627451;
 			g = 0.54117647058823529411764705882353;
 			b = 0.77647058823529411764705882352941;
 		};
-		value = infos.playing_track.num;
+		value = infos.navigation_track.num;
 	};
 
 	local infos_track_count = {
@@ -384,47 +491,40 @@ local function drawInfos()
 		value = infos.playing_track.total_time;
 	};
 	
-	if (infos.style == 1) then
-		-- background
-		res.infos_bg:draw(infos_bg.x, infos_bg.y, infos_bg.x + infos_bg.w, infos_bg.y + infos_bg.h, 1)
+	-- background
+	res.infos_bg:draw(infos_bg.x, infos_bg.y, infos_bg.x + infos_bg.w, infos_bg.y + infos_bg.h, 1)
+	
+	-- navigation title
+	res.roboto:write(infos_navigation_title.x, infos_navigation_title.y, infos_navigation_title.value, infos_navigation_title.font_size, infos_navigation_title.font_color.r, infos_navigation_title.font_color.g, infos_navigation_title.font_color.b , 1) 
+	
+	if (infos_playing_num.value ~= '00') then
+		-- playing num
+		res.digital_7:write(infos_playing_num.x, infos_playing_num.y, infos_playing_num.value, infos_playing_num.font_size, infos_playing_num.font_color.r, infos_playing_num.font_color.g, infos_playing_num.font_color.b , 1) 
+		
+		local temp_w2 = res.digital_7:width(infos_playing_num.value, infos_playing_num.font_size)
 		
 		-- playing title
-		res.roboto:write(infos_playing_title.x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
-		
-		-- track num
-		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
-		
-		-- track count
-		local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
-		res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
-		
-		-- track current time
-		res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
-		
-		-- track total time
-		local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
-		res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
-	elseif (infos.style == 2) then
-		-- background
-		res.infos_bg2:draw(infos_bg2.x, infos_bg2.y, infos_bg2.x + infos_bg2.w, infos_bg2.y + infos_bg2.h, 1)
-		
-		-- playing title
-		res.roboto:write(infos_playing_title.x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
-		
-		-- track num
-		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
-		
-		-- track count
-		local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
-		res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
-		
-		-- track current time
-		res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
-		
-		-- track total time
-		local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
-		res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
+		res.roboto:write(infos_playing_num.x + temp_w2 + infos_playing_title.offset_x, infos_playing_title.y, infos_playing_title.value, infos_playing_title.font_size, infos_playing_title.font_color.r, infos_playing_title.font_color.g, infos_playing_title.font_color.b , 1) 
 	end
+	
+	-- track num
+	
+	if (infos_playing_num.value == infos_track_num.value) then
+		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.sel_font_color.r, infos_track_num.sel_font_color.g, infos_track_num.sel_font_color.b , 1)
+	else
+		res.digital_7:write(infos_track_num.x, infos_track_num.y, infos_track_num.value, infos_track_num.font_size, infos_track_num.font_color.r, infos_track_num.font_color.g, infos_track_num.font_color.b , 1)
+	end
+	
+	-- track count
+	local temp_w = res.digital_7:width(infos_track_num.value, infos_track_num.font_size)
+	res.digital_7:write(infos_track_num.x + temp_w, infos_track_num.y, ' / ' .. infos_track_count.value, infos_track_count.font_size, infos_track_count.font_color.r, infos_track_count.font_color.g, infos_track_count.font_color.b , 1) 
+	
+	-- track current time
+	res.digital_7:write(infos_track_current_time.x, infos_track_current_time.y, infos_track_current_time.value, infos_track_current_time.font_size, infos_track_current_time.font_color.r, infos_track_current_time.font_color.g, infos_track_current_time.font_color.b , 1)
+	
+	-- track total time
+	local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
+	res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
 end
 
 function node.render()
@@ -438,6 +538,8 @@ function node.render()
 	res.logo_ear_monitoring:draw(490, 709, 490 + 224, 709 + 213, 0.5)
 	res.logo_samples_mix:draw(890, 717, 890 + 215, 717 + 207, 0.5)
 	
+	res.buttons_bg:draw(538, 476, 538 + 523, 476 + 240, 1)
+	
 	if (debug_mode == true) then
 		debugInfo()
 	end
@@ -448,5 +550,9 @@ function node.render()
 	
 	for _, knob in pairs(knobs) do
 		knob.draw()
+	end
+	
+	for _, button in pairs(buttons) do
+		button.draw()
 	end
 end

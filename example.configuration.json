@@ -2,8 +2,56 @@
 	"debug" : true,
 	"debug_udp" : false,
 	"show_playing_progress_interval" : 200,
-	"rendering" : {
-		"infos_style" : 1
+	"arduino" : {
+		"enabled" : true,
+		"usb_port_path" : "/dev/ttyUSB0"
+	},
+	"touchscreen" : {
+		"device_name" : "ADS7846 Touchscreen",
+		"min_x" : 150,
+		"min_y" : 200,
+		"max_x" : 3950,
+		"max_y" : 3925,
+		"res_x" : 1600,
+		"res_y" : 960
+	},
+	"buttons" : {
+		"play_stop" : {
+			"x" : 700,
+			"y" : 476,
+			"w" : 200,
+			"h" : 240
+		},
+		"previous" : {
+			"x" : 538,
+			"y" : 544,
+			"w" : 162,
+			"h" : 112
+		},
+		"next" : {
+			"x" : 900,
+			"y" : 544,
+			"w" : 162,
+			"h" : 112
+		}
+	},
+	"knobs" : {
+		"ear_monitoring" : {
+			"center_x" : 288,
+			"center_y" : 664,
+			"touchscreen_max_radius" : 250,
+			"touchscreen_min_radius" : 50,
+			"min_angle" : 34,
+			"max_angle" : 326
+		},
+		"samples_mix" : {
+			"center_x" : 1312,
+			"center_y" : 664,
+			"touchscreen_max_radius" : 250,
+			"touchscreen_min_radius" : 50,
+			"min_angle" : 34,
+			"max_angle" : 326
+		}
 	},
 	"tracks_folder" : "tracks",
 	"samples" : {

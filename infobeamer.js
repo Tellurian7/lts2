@@ -30,8 +30,8 @@ var lib = {};
 /**
  * Node
  * @class
- * @property {String} info_beamer_path Path of Info-Beamer software
- * @property {String} node_path Path of the node to execute
+ * @param {String} info_beamer_path Path of Info-Beamer software
+ * @param {String} node_path Path of the node to execute
  * @return {node}
  */
 lib.node = function(info_beamer_path, node_path)
