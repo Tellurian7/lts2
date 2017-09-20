@@ -1,6 +1,4 @@
 configuration.json
-tracks/*
-!tracks/.gitkeep
 node_modules
 savestat.json
 .idea/
