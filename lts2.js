@@ -46,6 +46,18 @@ var current_navigation_track_index;
 var current_playing_track_index = -1;
 
 /**
+ * Current playing track started at (in ms)
+ * @var {number}
+ */
+var track_playing_started_at = -1;
+
+/**
+ * Last tick value (in ms)
+ * @var {number}
+ */
+var ltseq_last_tick = 0;
+
+/**
  * Tracks informations
  * @var {Track[]}
  */
@@ -82,10 +94,22 @@ var midi_input;
 var midi_output;
 
 /**
- * MIDI ouput player
+ * MIDI output player
  * {MidiPlayer.Player}
  */
-var midi_output_player = null;
+//var midi_output_player = null;
+
+/**
+ * Handler for ltseq file playing interval
+ * @var {object}
+ */
+var ltseq_playing_handler;
+
+/**
+ * ltseq file events array
+ * @var {Array}
+ */
+var ltseq_events = [];
 
 /**
  * @var {object} Informations about current samples file playback (refresh at every frame)
@@ -309,6 +333,8 @@ function renderingProgressBar(percent, line)
  */
 function playTrack(index)
 {
+	track_playing_started_at = -1;
+
 	// Stop current playing track
 
 	if (track_samples_player)
@@ -417,6 +443,9 @@ function playTrack(index)
 	if (config.click.enabled)
 		track_click_player.pause();
 
+	var hrTime = process.hrtime()
+	track_playing_started_at = hrTime[0] * 1000000 + hrTime[1] / 1000;
+
 	// MIDI tests...
 
 	if (!config.midi_output.enabled)
@@ -440,54 +469,55 @@ function playTrack(index)
 
 	midi_output = new midi.output();
 
-	if (midi_output_player)
-	{
-		midi_output_player.stop();
-		midi_output_player = null;
-	}
 
-	midi_ouptut_player = new MidiPlayer.Player(function(event) {
-
+		/*
 		if ('name' in event)
 		{
 			switch (event.name)
 			{
 				case 'Controller Change' :
-					//console.log(_rjust(midi_ouptut_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'CC : ' + _ljust(event.number.toString(), 3) + ' ' + _ljust(event.value.toString(), 3) + ' [' + _toHex(event.number, 2) + ' ' + _toHex(event.value, 2) + ']');
+					console.log(_rjust(midi_output_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'CC : ' + _ljust(event.number.toString(), 3) + ' ' + _ljust(event.value.toString(), 3) + ' [' + _toHex(event.number, 2) + ' ' + _toHex(event.value, 2) + ']');
+					console.log(event);
 					break;
 
 				case 'Program Change' :
-					//console.log(_rjust(midi_ouptut_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'PC : ' + _ljust(event.delta.toString(), 6), event);
+					console.log(_rjust(midi_output_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'PC : ' + _ljust(event.delta.toString(), 6), event);
+					console.log(event);
 					break;
 
 				default :
-					//console.log(_rjust(midi_ouptut_player.getCurrentTick().toString(), 6, '0') + ' - ' + event.name + ' :', event);
+					console.log(_rjust(midi_output_player.getCurrentTick().toString(), 6, '0') + ' - ' + event.name + ' :', event);
+					console.log(event);
 			}
 		}
 		else
 		{
-			//console.log(_rjust(midi_ouptut_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'No Name Event :', event);
+			//console.log(_rjust(midi_output_player.getCurrentTick().toString(), 6, '0') + ' - ' + 'No Name Event :', event);
 		}
-
+		*/
+		/*
 		if ((midi_output !== null) && ('name' in event))
 		{
-			var l = '';
-			l += 'SEND : TRACK ' + event.track + ' : ' + _ljust((('name' in event) ? event.name : ''), 15) + ' : ';
-			l += _ljust(((event.raw.hex.status === null) ? '' : event.raw.hex.status), 2) + ' ';
-			l += _ljust(((event.raw.hex.data1 === null) ? '' : event.raw.hex.data1), 2) + ' ';
-			l += _ljust(((event.raw.hex.data2 === null) ? '' : event.raw.hex.data2), 2);
+			if (event.name == 'Program Change')
+			{
+				var l = '';
+				l += 'SEND : TRACK ' + event.track + ' : ' + _ljust((('name' in event) ? event.name : ''), 15) + ' : ';
+				l += _ljust(((event.raw.hex.status === null) ? '' : event.raw.hex.status), 2) + ' ';
+				l += _ljust(((event.raw.hex.data1 === null) ? '' : event.raw.hex.data1), 2) + ' ';
+				l += _ljust(((event.raw.hex.data2 === null) ? '' : event.raw.hex.data2), 2);
 
-			if (config.debug)
-				console.log(l);
+				if (config.debug)
+					console.log(l);
 
-			if ((event.raw.data2 === null) && (event.raw.data1 === null))
-				midi_output.sendMessage([event.raw.status]);
-			else if ((event.raw.data2 === null))
-				midi_output.sendMessage([event.raw.status, event.raw.data1]);
-			else
-				midi_output.sendMessage([event.raw.status, event.raw.data1, event.raw.data2]);
+				if ((event.raw.data2 === null) && (event.raw.data1 === null))
+					midi_output.sendMessage([event.raw.status]);
+				else if ((event.raw.data2 === null))
+					midi_output.sendMessage([event.raw.status, event.raw.data1]);
+				else
+					midi_output.sendMessage([event.raw.status, event.raw.data1, event.raw.data2]);
+			}
 		}
-	});
+		*/
 
 	var ports_count = midi_output.getPortCount();
 
@@ -522,30 +552,119 @@ function playTrack(index)
 
 	midi_output.openPort(port_number);
 
-	midi_ouptut_player.loadFile(__dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.midi_file);
+	if (!config.ltseq.enabled)
+	{
+		if (config.debug)
+			console.log('ltseq output disabled');
 
-	if (config.debug)
-		console.log('MIDI file format = ' + midi_ouptut_player.getFormat());
+		return;
+	}
+	else
+	{
+		if (config.debug)
+			console.log('ltseq output play...');
+	}
 
-	midi_ouptut_player.play();
+	// Load ltseq file
 
+	var ltseq_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.ltseq_file;
+
+	// File read
+
+	try
+	{
+		var ltseq_data = fs.readFileSync(ltseq_file_path);
+	}
+	catch (e)
+	{
+		console.error('Can\'t read file ' + ltseq_file_path);
+		process.exit(1);
+	}
+
+	ltseq_events = [];
+
+	if (ltseq_data.toString() != '')
+	{
+		var ltseq_lines = ltseq_data.toString().split("\r\n");
+		var ltseq_line_data, ltseq_event;
+
+
+
+		for (l in ltseq_lines)
+		{
+			ltseq_line_data = ltseq_lines[l].split("\t");
+			ltseq_event = {};
+			ltseq_event.timecode = ltseq_line_data[0] - config.ltseq.remote_latency;
+			ltseq_event.hex_status = ltseq_line_data[1].toString();
+			ltseq_event.hex_value = ltseq_line_data[2].toString();
+			ltseq_event.status = parseInt(ltseq_line_data[1], 16);
+			ltseq_event.value = parseInt(ltseq_line_data[2], 16);
+			ltseq_event.message_type = null;
+
+			if (ltseq_event.hex_status.charAt(0) == 'C')
+			{
+				ltseq_event.message_type = 'Program Change';
+				ltseq_event.message_channel = parseInt(ltseq_event.hex_status.charAt(1), 16);
+			}
+
+			ltseq_events.push(ltseq_event);
+		}
+		//console.log('events : ', ltseq_events);
+
+		ltseqPlayingIntervalFunction = function () {
+			if (current_playing_track_index != -1)
+				ltseqFileTick();
+		};
+
+		ltseq_last_tick = 0;
+		ltseqPlayingIntervalFunction();
+		ltseq_playing_handler = setInterval(ltseqPlayingIntervalFunction, config.ltseq.tick_interval);
+	}
 	/*
-	track_midi_player = aplaymidi();
-
-	var opts = [];
-	// File
-	opts.push('"' + __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.midi_file + '"');
-
-	// Port
-	opts.push('-p ' + config.midi_output.port);
-
-	track_midi_player.exec(opts, function(error, stdout, stderr) {
-		console.log('callback :');
-		console.log('error :', error);
-		console.log('stdout :', stdout);
-		console.log('stderr :', stderr);
-	});
+	midi_output_player.loadFile(__dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.midi_file);
 	*/
+}
+
+/**
+ * Interval tick of ltseq file playing
+ */
+function ltseqFileTick()
+{
+	var hrTime = process.hrtime();
+	var current_ms = hrTime[0] * 1000000 + hrTime[1] / 1000;
+	var playing_since = current_ms - track_playing_started_at;
+
+	// Scan events for matching
+
+	for (i in ltseq_events)
+	{
+		if ((ltseq_events[i].timecode >= ltseq_last_tick) && (ltseq_events[i].timecode < playing_since))
+		{
+			if (config.debug)
+			{
+				message_infos = '';
+
+				if (ltseq_events[i].message_type != null)
+				{
+					if (ltseq_events[i].message_type == 'Program Change')
+						message_infos = ' (' + ltseq_events[i].message_type + ', on channel ' + ltseq_events[i].message_channel + ')';
+				}
+
+				console.log('MIDI SEND ' + ltseq_events[i].hex_status + message_infos + ' : ' + ltseq_events[i].hex_value);
+			}
+
+			midi_output.sendMessage([ltseq_events[i].status, ltseq_events[i].value]);
+
+			lts_status.last_midi_message.line1 = ltseq_events[i].hex_status;
+			sendUdpMessage('infos/last_midi_message/line1/set:' + lts_status.last_midi_message.line1);
+
+			lts_status.last_midi_message.line2 = ltseq_events[i].hex_value;
+			sendUdpMessage('infos/last_midi_message/line2/set:' + lts_status.last_midi_message.line2);
+		}
+	}
+
+	//console.log(ltseq_last_tick + ' -> ' + playing_since);
+	ltseq_last_tick = playing_since;
 }
 
 /**
@@ -581,6 +700,7 @@ function stopPlayingTrack()
 		midi_output = null;
 	}
 
+	/*
 	if (midi_output_player !== null)
 	{
 		midi_output_player.stop();
@@ -590,6 +710,7 @@ function stopPlayingTrack()
 
 		midi_output_player = null;
 	}
+	*/
 }
 
 /**
@@ -698,7 +819,7 @@ function scanTracksDir()
 
 		// Check JSON data integrity
 
-		var requierd_data = ['title', 'samples_file', 'click_file', 'midi_file'];
+		var requierd_data = ['title', 'samples_file', 'click_file', 'ltseq_file'];
 
 		for (var j in requierd_data)
 		{
@@ -738,7 +859,7 @@ function scanTracksDir()
 				process.exit(1);
 			}
 
-			// track.json file read
+			// File read
 
 			try
 			{
@@ -769,7 +890,7 @@ function scanTracksDir()
 				process.exit(1);
 			}
 
-			// track.json file read
+			// File read
 
 			try
 			{
@@ -782,6 +903,40 @@ function scanTracksDir()
 				process.exit(1);
 			}
 		}
+
+		// Check track files
+
+		if (config.ltseq.enabled)
+		{
+			var ltseq_file_path = __dirname + '/' + config.tracks_folder + '/' + track.folder + '/' + track.ltseq_file;
+
+			// Access and file exist check
+
+			try
+			{
+				fs.accessSync(ltseq_file_path, fs.constants.R_OK);
+			}
+			catch (e)
+			{
+				console.error('Can\'t access to file ' + ltseq_file_path + ' or file doesn\'t exist');
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t access to ltseq file ', track.ltseq_file]);
+				process.exit(1);
+			}
+
+			// File read
+
+			try
+			{
+				var tmp = fs.readFileSync(ltseq_file_path);
+			}
+			catch (e)
+			{
+				console.error('Can\'t read file ' + ltseq_file_path);
+				renderingError(['Err in directory', '"' + tracks_dirs[i] + '"', 'Can\'t read ltseq file', track.ltseq_file]);
+				process.exit(1);
+			}
+		}
+
 
 		tracks.push(track);
 
@@ -1364,7 +1519,7 @@ function processArduinoInit()
 			console.log('Initialize Arduino serial port...');
 	}
 
-	arduino_port = new SerialPort(config.arduino.usb_port_path);
+	arduino_port = new SerialPort(config.arduino.usb_port_path, {parser: SerialPort.parsers.readline("\r\n")});
 
 	arduino_port.on('open', function() {
 		if (config.debug)
@@ -1385,7 +1540,7 @@ function processArduinoInit()
 			var ar = lines[i].split('=');
 			switch (ar[0])
 			{
-				case 'A2' :
+				case 'A0' :
 					lts_status.ear_monitoring.level_percent = parseInt(ar[1]);
 					config.click.gain = lts_status.ear_monitoring.level_percent;
 					try
@@ -1410,6 +1565,10 @@ function processArduinoInit()
 
 	arduino_port.on('error', function(err) {
 		console.log('Arduino serial port error : ', err.message);
+	});
+
+	arduino_port.on('disconnect', function(err) {
+		console.log('Arduino serial port disonnected : ', err.message);
 	});
 }
 
@@ -1728,6 +1887,10 @@ var lts_status = {
 	},
 	'samples_mix' : {
 		'level_percent' : 0
+	},
+	'last_midi_message' : {
+		'line1' : '',
+		'line2' : ''
 	}
 }
 
