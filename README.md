@@ -1,7 +1,7 @@
-* Live Track Station v2 *
+# Live Track Station v2 #
 
 
-** Work in progress... **
+## Work in progress... ##
 
 
 Project made to use a Raspberry PI as a "live solution" box for music bands.
