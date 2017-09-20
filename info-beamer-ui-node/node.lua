@@ -18,6 +18,10 @@ local infos = {
 		title = "";
 		num = "00";
 	};
+	last_midi_message = {
+		line1 = "";
+		line2 = "";
+	};
 };
 
 local function hslider(conf)
@@ -364,6 +368,14 @@ util.data_mapper{
 	["knobs/samples_mix/set"] = function(value)
         knobs.samples_mix.set(tonumber(value))
     end;
+	
+	["infos/last_midi_message/line1/set"] = function(value)
+        infos.last_midi_message.line1 = value
+    end;
+	
+	["infos/last_midi_message/line2/set"] = function(value)
+        infos.last_midi_message.line2 = value
+    end;
 }
 
 local debug_info_line_y = 10
@@ -525,6 +537,20 @@ local function drawInfos()
 	-- track total time
 	local temp_w = res.digital_7:width(infos_track_current_time.value, infos_track_current_time.font_size)
 	res.digital_7:write(infos_track_current_time.x + temp_w, infos_track_current_time.y, ' / ' .. infos_track_total_time.value, infos_track_total_time.font_size, infos_track_total_time.font_color.r, infos_track_total_time.font_color.g, infos_track_total_time.font_color.b , 1) 
+	
+	
+	-- last midi message
+
+	-- 88888f RGB(136,136,143)
+	local tooltip_color_r = 0.53333333333333333333333333333333
+	local tooltip_color_g = 0.53333333333333333333333333333333
+	local tooltip_color_b = 0.56078431372549019607843137254902
+	
+	local text_w = res.roboto_bold:width(infos.last_midi_message.line1, 45)
+	res.roboto_bold:write(800 - text_w / 2, 805, infos.last_midi_message.line1, 45, tooltip_color_r, tooltip_color_g, tooltip_color_g, 1)
+	
+	local text_w = res.roboto_bold:width(infos.last_midi_message.line2, 45)
+	res.roboto_bold:write(800 - text_w / 2, 857, infos.last_midi_message.line2, 45, tooltip_color_r, tooltip_color_g, tooltip_color_g, 1)
 end
 
 function node.render()

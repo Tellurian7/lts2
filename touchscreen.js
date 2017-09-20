@@ -2,11 +2,11 @@
  * Lib for Touch Screen reading
  * @author Ryan Gilles <tellurian_7@hotmail.com>
  */
- 
+
 var FS = require("fs");
 var execSync = require('child_process').execSync;
 var EventEmitter = require('events').EventEmitter;
- 
+
 var lib = {};
 
 /**
@@ -30,7 +30,7 @@ lib.touchscreen_input = function(config)
 	this._position_y = 0;
 	this._old_position_x = 0;
 	this._old_position_y = 0;
-	 
+
 	this._buffer = new Buffer(16);
 	
 	// Detect event input file
@@ -87,30 +87,30 @@ lib.touchscreen_input.prototype.run = function (touchCallback, pressureCallback)
 
 lib.touchscreen_input.prototype._onOpen = function(fd)
 {
-	this._fd = fd;     
+	this._fd = fd;
 	this._startRead();
 }
 
 lib.touchscreen_input.prototype._startRead = function()
 {
 	if (this._fd)
-		FS.read(this._fd, this._buffer, 0, 16, null, this._onRead);	
+		FS.read(this._fd, this._buffer, 0, 16, null, this._onRead);
 }
 
 lib.touchscreen_input.prototype._onRead = function(err, bytesRead)
-{	
+{
 	if (!this._fd)
 		return;
 	
 	var readElement = this._parse(this._buffer);
-					
+
 	if (readElement)
-	{			
+	{
 		if (readElement != undefined && readElement.type == 3 && readElement.code == 0 && readElement.val > 0)
 			this._position_x = Math.round(((readElement.val - this.config.min_x) / (this.config.max_x - this.config.min_x)) * this.config.res_x);
-					
+
 		if (readElement != undefined && readElement.type == 3 && readElement.code == 1 && readElement.val > 0)
-			this._position_y = Math.round(((readElement.val - this.config.min_y) / (this.config.max_y - this.config.min_y)) * this.config.res_y);	
+			this._position_y = Math.round(((readElement.val - this.config.min_y) / (this.config.max_y - this.config.min_y)) * this.config.res_y);
 		
 		if (readElement != undefined && readElement.code == 24)
 		{
@@ -130,8 +130,8 @@ lib.touchscreen_input.prototype._onRead = function(err, bytesRead)
 			this.emit('touch', this._position_x, this._position_y);
 			this._old_position_x = this._position_x;
 			this._old_position_y = this._position_y;
-						
-		}			
+
+		}
 	}
 	
 	if (this._fd)
